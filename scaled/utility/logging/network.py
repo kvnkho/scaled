@@ -44,7 +44,7 @@ class NetworkLogForwarder:
     """
     def __init__(self, frontend_connector: AsyncConnector, backend_connector: AsyncConnector):
         self._frontend_connector = frontend_connector
-        self._frontend.setsockopt(zmq.SUBSCRIBE, "")
+        self._frontend_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
         self._backend_connector = backend_connector
         self._forwarder = zmq.device(zmq.FORWARDER, 
         self._frontend_connector._socket, self._backend_connector._socket)
@@ -57,4 +57,3 @@ class NetworkLogPublisher:
     """
     def __init__(self, internal_connector: AsyncConnector):
         self._internal_connector = internal_connector
-        

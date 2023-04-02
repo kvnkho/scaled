@@ -56,8 +56,8 @@ class SchedulerProcess(multiprocessing.get_context("spawn").Process):
                 function_retention_seconds=self._function_retention_seconds,
                 load_balance_seconds=self._load_balance_seconds,
                 load_balance_trigger_times=self._load_balance_trigger_times,
-                network_log_subscriber_address = self._network_log_subcriber_address,
-                network_log_publisher_address = self._network_log_publisher_address,
+                network_log_subscriber_address=self._network_log_subcriber_address,
+                network_log_publisher_address=self._network_log_publisher_address,
             )
         )
 

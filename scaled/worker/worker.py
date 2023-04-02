@@ -123,9 +123,12 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 stop_event = self._stop_event,
                 prefix = "AWL",
                 context = context,
-                socker_type = zmq.PUB,
+                socket_type = zmq.PUB,
                 bind_or_connect = "connect",
-                address = ZMQConfig.from_string(self._network_log_address)
+                address = self._network_log_address,
+                callback=None,
+                exit_callback=None,
+                daemonic=False
             )
 
     def __run_forever(self):

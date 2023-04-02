@@ -39,8 +39,22 @@ class SchedulerClusterCombo:
         processing_queue_size: int = DEFAULT_WORKER_PROCESSING_QUEUE_SIZE,
         per_worker_queue_size: int = DEFAULT_PER_WORKER_QUEUE_SIZE,
         serializer: Serializer = DefaultSerializer(),
-        network_log_address: str = None,
+        network_log_subscriber_address: str = None,
+        network_log_publisher_address: str = None,
     ):
+        # If logging addresses are supplied, format with ZMQConfig
+        assert (
+            (network_log_subscriber_address is None and network_log_publisher_address is None) 
+            or 
+            (network_log_subscriber_address is not None and network_log_publisher_address is not None)
+        ), "Both subscriber and publisher addresses are needed for logging, otherwise don't provide any"
+        
+        if network_log_subscriber_address:
+            self._network_log_subscriber_address = ZMQConfig.from_string(network_log_subscriber_address)
+        if network_log_publisher_address:
+            self._network_log_publisher_address = ZMQConfig.from_string(network_log_publisher_address)
+
+
         self._stop_event = multiprocessing.get_context("spawn").Event()
         self._cluster = ClusterProcess(
             stop_event=self._stop_event,
@@ -53,7 +67,7 @@ class SchedulerClusterCombo:
             processing_queue_size=processing_queue_size,
             event_loop=event_loop,
             serializer=serializer,
-            network_log_address=ZMQConfig.from_string(network_log_address),
+            network_log_address=self._network_log_subscriber_address,
         )
         self._scheduler = SchedulerProcess(
             address=ZMQConfig.from_string(address),
@@ -64,7 +78,8 @@ class SchedulerClusterCombo:
             function_retention_seconds=function_retention_seconds,
             load_balance_seconds=load_balance_seconds,
             load_balance_trigger_times=load_balance_trigger_times,
-            network_log_address=ZMQConfig.from_string(network_log_address)
+            network_log_subscriber_address=self._network_log_subscriber_address,
+            network_log_publisher_address=self._network_log_publisher_address
         )
 
         self._cluster.start()

@@ -37,7 +37,6 @@ class Scheduler:
             raise TypeError(f"{self.__class__.__name__}: scheduler address must be tcp type: {address.to_address()}")
 
         self._address_monitor = ZMQConfig(type=ZMQType.ipc, host=f"/tmp/{address.host}_{address.port}_monitor")
-        self._network_log_subscriber = ZMQConfig(type=ZMQType.tpc, )
 
         logging.info(f"{self.__class__.__name__}: monitor address is {self._address_monitor.to_address()}")
         context = zmq.asyncio.Context()
