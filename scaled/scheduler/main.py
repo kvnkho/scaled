@@ -17,7 +17,7 @@ from scaled.io.async_binder import AsyncBinder
 from scaled.protocol.python.message import MessageType, MessageVariant
 from scaled.scheduler.task_manager.vanilla import VanillaTaskManager
 from scaled.scheduler.worker_manager.vanilla import VanillaWorkerManager
-
+from scaled.utility.logging.network import NetworkLogForwarder
 
 class Scheduler:
     def __init__(
@@ -30,17 +30,20 @@ class Scheduler:
         function_retention_seconds: int,
         load_balance_seconds: int,
         load_balance_trigger_times: int,
-        network_log_address: ZMQConfig,
+        network_log_subscriber_address: ZMQConfig,
+        network_log_publisher_address: ZMQConfig,
     ):
         if address.type != ZMQType.tcp:
             raise TypeError(f"{self.__class__.__name__}: scheduler address must be tcp type: {address.to_address()}")
 
         self._address_monitor = ZMQConfig(type=ZMQType.ipc, host=f"/tmp/{address.host}_{address.port}_monitor")
+        self._network_log_subscriber = ZMQConfig(type=ZMQType.tpc, )
 
         logging.info(f"{self.__class__.__name__}: monitor address is {self._address_monitor.to_address()}")
+        context = zmq.asyncio.Context()
         self._binder = AsyncBinder(prefix="S", address=address, io_threads=io_threads)
         self._binder_monitor = AsyncConnector(
-            context=zmq.asyncio.Context(),
+            context = context,
             prefix="R",
             socket_type=zmq.PUB,
             address=self._address_monitor,
@@ -58,6 +61,29 @@ class Scheduler:
             load_balance_trigger_times=load_balance_trigger_times,
         )
         self._status_reporter = StatusReporter(self._binder_monitor)
+
+        # Setting up log forwarder responsible for bringing worker logs to client
+        # It subscribed to workers and publishes to the client
+        self._log_forwarder = None
+        if network_log_publisher_address and network_log_subscriber_address:
+            self._log_forwarder = NetworkLogForwarder(
+                frontend_connector = AsyncConnector(
+                    context = context,
+                    prefix="WL",
+                    socket_type=zmq.SUB,
+                    address=network_log_subscriber_address,
+                    bind_or_connect="bind",
+                    callback=None,
+                ),
+                backend_connector = AsyncConnector(
+                    context = context,
+                    prefix="CL",
+                    socket_type=zmq.PUB,
+                    address=network_log_publisher_address,
+                    bind_or_connect="bind",
+                    callback=None,
+                ),
+            )
 
         self._binder.register(self.on_receive_message)
         self._function_manager.hook(self._binder)

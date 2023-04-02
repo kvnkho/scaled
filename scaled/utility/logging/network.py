@@ -1,7 +1,10 @@
 import logging
 import sys 
 
+import zmq
+
 from scaled.utility.zmq_config import ZMQConfig
+from scaled.io.async_connector import AsyncConnector
 from scaled.io.sync_connector import SyncConnector
 from scaled.protocol.python.message import MessageType
 from scaled.protocol.python.message import TaskLog
@@ -30,9 +33,28 @@ class NetworkLogHandler(logging.Handler):
         )
 
 
-class NetworkLogForwarder():
+class NetworkLogForwarder:
     """
-    The Forwarder is intended to live on the Scheduler. It takes
-    all the logs from the workers and passes them back to the  Client
-    where they can be consumed and handled (stdout, file, etc)
+    The NetworkLogForwarder is intended to live on the Scheduler. It takes
+    all the logs from the workers emitted by the NetworkLogHandler and passes 
+    them back to the NetworkLogPublisher where they can be consumed and handled (stdout, file, etc)
+
+    The terminology here follows the ZMQ Forwarder Architecture:
+    https://learning-0mq-with-pyzmq.readthedocs.io/en/latest/pyzmq/devices/forwarder.html
     """
+    def __init__(self, frontend_connector: AsyncConnector, backend_connector: AsyncConnector):
+        self._frontend_connector = frontend_connector
+        self._frontend.setsockopt(zmq.SUBSCRIBE, "")
+        self._backend_connector = backend_connector
+        self._forwarder = zmq.device(zmq.FORWARDER, 
+        self._frontend_connector._socket, self._backend_connector._socket)
+
+class NetworkLogPublisher:
+    """
+    The NetworkLogPublisher is responsible for handling the worker logs
+    on the client side. It can be configured to write logs to file
+    or simply stream to stdout.
+    """
+    def __init__(self, internal_connector: AsyncConnector):
+        self._internal_connector = internal_connector
+        

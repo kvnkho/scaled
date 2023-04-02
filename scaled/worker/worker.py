@@ -125,7 +125,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 context = context,
                 socker_type = zmq.PUB,
                 bind_or_connect = "connect",
-                address = self._network_log_address
+                address = ZMQConfig.from_string(self._network_log_address)
             )
 
     def __run_forever(self):
