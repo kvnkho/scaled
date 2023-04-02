@@ -52,15 +52,17 @@ def main():
         network_log_subscriber_address=network_log_subscriber_address,
         network_log_publisher_address=network_log_publisher_address
     )
-    # client = Client(address=address)
+    client = Client(address=address)
 
-    # tasks = [random.randint(0, 101) for _ in range(10)]
+    tasks = [random.randint(0, 101) for _ in range(10)]
 
-    # with ScopedLogger(f"scaled submit {len(tasks)} tasks"):
-    #     futures = [client.submit(sleep_print, a) for a in tasks]
+    with ScopedLogger(f"scaled submit {len(tasks)} tasks"):
+        futures = [client.submit(sleep_print, a) for a in tasks]
 
-    # with ScopedLogger(f"scaled gather {len(futures)} results"):
-    #     results = [future.result() for future in futures]
+    with ScopedLogger(f"scaled gather {len(futures)} results"):
+        results = [future.result() for future in futures]
+
+    print(results)
 
 if __name__ == "__main__":
     main()
