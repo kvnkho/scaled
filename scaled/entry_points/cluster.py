@@ -63,6 +63,13 @@ def get_args():
         "--event-loop", "-el", default="builtin", choices=EventLoopType.allowed_types(), help="select event loop type"
     )
     parser.add_argument("address", type=ZMQConfig.from_string, help="scheduler address to connect to")
+    parser.add_argument(
+        "--network_log_address", 
+        "-nla", 
+        default=None,
+        type=ZMQConfig.from_string, 
+        help="address to send logs to"
+    )
     return parser.parse_args()
 
 
@@ -81,5 +88,6 @@ def main():
         processing_queue_size=args.processing_queue_size,
         event_loop=args.event_loop,
         serializer=DefaultSerializer(),
+        network_log_address=args.network_log_address
     )
     cluster.run()

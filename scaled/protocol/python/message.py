@@ -12,6 +12,7 @@ class MessageType(enum.Enum):
     TaskCancel = b"TC"
     TaskCancelEcho = b"TX"
     TaskResult = b"TR"
+    TaskLog = b"TL"
 
     GraphTask = b"GT"
     GraphTaskEcho = b"GE"
@@ -162,6 +163,17 @@ class TaskResult(_Message):
     @staticmethod
     def deserialize(data: List[bytes]):
         return TaskResult(data[0], TaskStatus(data[1]), struct.unpack("f", data[2])[0], data[3])
+
+@attrs.define
+class TaskLog(_Message):
+    message: bytes
+
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (self.message,)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return TaskLog(data[0])
 
 
 @attrs.define
@@ -364,6 +376,7 @@ PROTOCOL = {
     MessageType.TaskCancel.value: TaskCancel,
     MessageType.TaskCancelEcho.value: TaskCancelEcho,
     MessageType.TaskResult.value: TaskResult,
+    MessageType.TaskLog.value: TaskLog,
     MessageType.GraphTask.value: GraphTask,
     MessageType.GraphTaskEcho.value: GraphTaskEcho,
     MessageType.GraphTaskCancel.value: GraphTaskCancel,

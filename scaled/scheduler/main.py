@@ -30,6 +30,7 @@ class Scheduler:
         function_retention_seconds: int,
         load_balance_seconds: int,
         load_balance_trigger_times: int,
+        network_log_address: ZMQConfig,
     ):
         if address.type != ZMQType.tcp:
             raise TypeError(f"{self.__class__.__name__}: scheduler address must be tcp type: {address.to_address()}")

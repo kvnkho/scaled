@@ -23,6 +23,7 @@ from scaled.protocol.python.message import (
 )
 from scaled.worker.agent.agent_thread import AgentThread
 from scaled.worker.memory_cleaner import MemoryCleaner
+from scaled.utility.logging.network import NetworkLogHandler
 
 
 class Worker(multiprocessing.get_context("spawn").Process):
@@ -38,6 +39,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         processing_queue_size: int,
         event_loop: str,
         serializer: FunctionSerializerType,
+        network_log_address: ZMQConfig
     ):
         multiprocessing.Process.__init__(self, name="Worker")
 
@@ -51,13 +53,17 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._event_loop = event_loop
         self._stop_event = stop_event
         self._serializer = serializer
+        self._network_log_address = network_log_address
+
 
         self._agent: Optional[AgentThread] = None
         self._internal_connector: Optional[SyncConnector] = None
         self._cleaner: Optional[MemoryCleaner] = None
         self._ready_event = multiprocessing.get_context("spawn").Event()
+        self._network_log_connector: Optional[SyncConnector] = None
 
         self._cached_functions: Dict[bytes, Callable] = {}
+
 
     def wait_till_ready(self):
         while not self._ready_event.is_set():
@@ -112,6 +118,16 @@ class Worker(multiprocessing.get_context("spawn").Process):
         # worker is ready
         self._ready_event.set()
 
+        if self._network_log_address:
+            self._network_log_connector = SyncConnector(
+                stop_event = self._stop_event,
+                prefix = "AWL",
+                context = context,
+                socker_type = zmq.PUB,
+                bind_or_connect = "connect",
+                address = self._network_log_address
+            )
+
     def __run_forever(self):
         self._internal_connector.run()
         self.shutdown()
@@ -146,8 +162,9 @@ class Worker(multiprocessing.get_context("spawn").Process):
         begin = time.monotonic()
         try:
             function = self._cached_functions[task.function_id]
+            function_with_logger = self.__add_network_handler(function)
             args = self._serializer.deserialize_arguments(tuple(arg.data for arg in task.function_args))
-            result = function(*args)
+            result = function_with_logger(*args)
             result_bytes = self._serializer.serialize_result(result)
             self._internal_connector.send_immediately(
                 MessageType.TaskResult,
@@ -165,3 +182,22 @@ class Worker(multiprocessing.get_context("spawn").Process):
                     pickle.dumps(e, protocol=pickle.HIGHEST_PROTOCOL),
                 ),
             )
+
+
+    def __add_network_handler(self, fn: Callable) -> Callable:
+        """
+        If a task already uses Python logging methods like "logger.info()",
+        this function adds a handler to the existing logger that will emit
+        logs over the network to the scheduler.
+        """
+        if self._network_log_connector:
+            def wrapper(*args, **kwargs):
+                # Add handler
+                logger = logging.getLogger("mylogger")
+                logger.setLevel(logging.DEBUG)
+                handler = NetworkLogHandler(self._network_log_address)
+                handler.setLevel(logging.DEBUG)
+                logger.addHandler(handler)
+                fn(*args, **kwargs)
+            return wrapper
+        return fn

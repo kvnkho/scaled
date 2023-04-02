@@ -20,6 +20,7 @@ class SchedulerProcess(multiprocessing.get_context("spawn").Process):
         load_balance_seconds: int,
         load_balance_trigger_times: int,
         event_loop: Literal["builtin", "uvloop"] = "builtin",
+        network_log_address: ZMQConfig = None,
     ):
         multiprocessing.Process.__init__(self, name="Scheduler")
         self._address = address
@@ -30,6 +31,7 @@ class SchedulerProcess(multiprocessing.get_context("spawn").Process):
         self._function_retention_seconds = function_retention_seconds
         self._load_balance_seconds = load_balance_seconds
         self._load_balance_trigger_times = load_balance_trigger_times
+        self._network_log_address = network_log_address
 
         self._event_loop = event_loop
         self._scheduler: Optional[Scheduler] = None
@@ -52,6 +54,7 @@ class SchedulerProcess(multiprocessing.get_context("spawn").Process):
                 function_retention_seconds=self._function_retention_seconds,
                 load_balance_seconds=self._load_balance_seconds,
                 load_balance_trigger_times=self._load_balance_trigger_times,
+                network_log_address = self._network_log_address
             )
         )
 

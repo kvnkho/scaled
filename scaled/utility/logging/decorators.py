@@ -2,6 +2,7 @@ import functools
 import inspect
 import logging
 import typing
+import sys
 
 from scaled.utility.logging.scoped_logger import ScopedLogger
 
