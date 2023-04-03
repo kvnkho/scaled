@@ -118,6 +118,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         # worker is ready
         self._ready_event.set()
 
+        # create separate connector for logs
         if self._network_log_address:
             self._network_log_connector = SyncConnector(
                 stop_event = self._stop_event,
@@ -202,9 +203,10 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 # Add handler
                 logger = logging.getLogger("mylogger")
                 logger.setLevel(logging.DEBUG)
-                handler = NetworkLogHandler(self._network_log_address)
+                handler = NetworkLogHandler(self._network_log_connector)
                 handler.setLevel(logging.DEBUG)
                 logger.addHandler(handler)
+                logger.info("got heree")
                 fn(*args, **kwargs)
             return wrapper
         return fn

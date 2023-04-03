@@ -1,5 +1,6 @@
 import logging
 import sys 
+import asyncio
 
 import zmq
 
@@ -21,16 +22,17 @@ class NetworkLogHandler(logging.Handler):
     code change from the user.
     """
     def __init__(self, network_log_connector: SyncConnector):
-        self._internal_connector = network_log_connector
+        self.__network_log_connector = network_log_connector
         self._serializer = DefaultSerializer()
         self.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
         super().__init__()
 
     def emit(self, record):
-        self._internal_connector.send_immediately(
+        self.__network_log_connector.send_immediately(
             MessageType.TaskLog,
-            TaskLog(self._serializer.serialize_results(record.msg)),
+            TaskLog(self._serializer.serialize_result(record.msg)),
         )
+
 
 
 class NetworkLogForwarder:
@@ -42,24 +44,24 @@ class NetworkLogForwarder:
     The terminology here follows the ZMQ Forwarder Architecture:
     https://learning-0mq-with-pyzmq.readthedocs.io/en/latest/pyzmq/devices/forwarder.html
     """
-    def __init__(self, frontend_connector: AsyncConnector, backend_connector: AsyncConnector):
+    def __init__(self, 
+                 frontend_connector: AsyncConnector = None,
+                 backend_connector: AsyncConnector = None):
         self._frontend_connector = frontend_connector
-        self._frontend_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
         self._backend_connector = backend_connector
+        if self._frontend_connector:
+            self._frontend_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
+
 
     async def routine(self):
         """
         The goal is to just forward so we don't need to deserialize and serialize
         """
-        frames = await self._frontend_connector._socket.recv_multipart()
-        await self._backend_connector._socket.send_multipart(frames, copy=False)
-        
-    # async def forwarder(self):
-    #     # self._forwarder = zmq.device(zmq.FORWARDER, 
-    #     # self._frontend_connector._socket, self._backend_connector._socket)
-    #     message = await frontend.recv()
-    #     await backend.send(message)
-    #     await zmq.asyncio.proxy(self._frontend_connector._socket, self._backend_connector)
+        if self._frontend_connector:
+            frames = await self._frontend_connector._socket.recv_multipart()
+            await self._backend_connector._socket.send_multipart(frames, copy=False)
+        else:
+            await asyncio.sleep(0)
 
 
 class NetworkLogPublisher:

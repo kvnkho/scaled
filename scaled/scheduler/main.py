@@ -83,6 +83,8 @@ class Scheduler:
                     callback=None,
                 ),
             )
+        else:
+            self._log_forwarder = NetworkLogForwarder()
 
         self._binder.register(self.on_receive_message)
         self._function_manager.hook(self._binder)

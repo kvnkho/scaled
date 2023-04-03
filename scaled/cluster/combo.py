@@ -56,7 +56,6 @@ class SchedulerClusterCombo:
             self._network_log_subscriber_address = None
             self._network_log_publisher_address = None          
 
-
         self._stop_event = multiprocessing.get_context("spawn").Event()
         self._cluster = ClusterProcess(
             stop_event=self._stop_event,

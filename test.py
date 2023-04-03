@@ -36,17 +36,6 @@ def main():
     network_log_subscriber_address = "tcp://127.0.0.1:3456"
     network_log_publisher_address = "tcp://127.0.0.1:3457"
 
-    # scheduler = SchedulerProcess(address=ZMQConfig.from_string(address),
-    #     io_threads=DEFAULT_IO_THREADS,
-    #     max_number_of_tasks_waiting=DEFAULT_MAX_NUMBER_OF_TASKS_WAITING,
-    #     per_worker_queue_size=DEFAULT_PER_WORKER_QUEUE_SIZE,
-    #     worker_timeout_seconds=DEFAULT_WORKER_TIMEOUT_SECONDS,
-    #     function_retention_seconds=DEFAULT_FUNCTION_RETENTION_SECONDS,
-    #     load_balance_seconds=DEFAULT_LOAD_BALANCE_SECONDS,
-    #     load_balance_trigger_times=DEFAULT_LOAD_BALANCE_TRIGGER_TIMES,
-
-    # ).start()
-
     cluster = SchedulerClusterCombo(address=address, 
         n_workers=2, per_worker_queue_size=2, event_loop="builtin",
         network_log_subscriber_address=network_log_subscriber_address,
