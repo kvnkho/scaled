@@ -95,7 +95,6 @@ class NetworkLogPublisher:
 
     def __on_receive(self, message_type: MessageType, message: TaskLog):
         assert message_type == MessageType.TaskLog
-        print(type(TaskLog.message))
-        self.logger.warn(f"client_log-{str(TaskLog.message)}")
+        self.logger.warn(f"client_log-{message.message}")
         return
 
