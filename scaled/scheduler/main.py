@@ -136,6 +136,7 @@ class Scheduler:
                 create_async_loop_routine(self._function_manager.routine, CLEANUP_INTERVAL_SECONDS),
                 create_async_loop_routine(self._worker_manager.routine, CLEANUP_INTERVAL_SECONDS),
                 create_async_loop_routine(self._status_reporter.routine, STATUS_REPORT_INTERVAL_SECONDS),
+                create_async_loop_routine(self._log_forwarder.routine, 0),
                 return_exceptions=True,
             )
         except asyncio.CancelledError:

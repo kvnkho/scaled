@@ -48,7 +48,7 @@ def main():
     # ).start()
 
     cluster = SchedulerClusterCombo(address=address, 
-    n_workers=2, per_worker_queue_size=2, event_loop="builtin",
+        n_workers=2, per_worker_queue_size=2, event_loop="builtin",
         network_log_subscriber_address=network_log_subscriber_address,
         network_log_publisher_address=network_log_publisher_address
     )
@@ -61,8 +61,6 @@ def main():
 
     with ScopedLogger(f"scaled gather {len(futures)} results"):
         results = [future.result() for future in futures]
-
-    print(results)
 
 if __name__ == "__main__":
     main()

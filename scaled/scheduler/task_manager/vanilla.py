@@ -68,6 +68,7 @@ class VanillaTaskManager(TaskManager, Looper, Reporter):
         }
 
     async def on_task_new(self, client: bytes, task: Task):
+
         if not await self._function_manager.has_function(task.function_id):
             await self._binder.send(
                 client, MessageType.TaskEcho, TaskEcho(task.task_id, TaskEchoStatus.FunctionNotExists)

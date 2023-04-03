@@ -24,7 +24,7 @@ class NetworkLogHandler(logging.Handler):
         self._internal_connector = network_log_connector
         self._serializer = DefaultSerializer()
         self.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
-        super.__init__()
+        super().__init__()
 
     def emit(self, record):
         self._internal_connector.send_immediately(
@@ -46,8 +46,21 @@ class NetworkLogForwarder:
         self._frontend_connector = frontend_connector
         self._frontend_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
         self._backend_connector = backend_connector
-        self._forwarder = zmq.device(zmq.FORWARDER, 
-        self._frontend_connector._socket, self._backend_connector._socket)
+
+    async def routine(self):
+        """
+        The goal is to just forward so we don't need to deserialize and serialize
+        """
+        frames = await self._frontend_connector._socket.recv_multipart()
+        await self._backend_connector._socket.send_multipart(frames, copy=False)
+        
+    # async def forwarder(self):
+    #     # self._forwarder = zmq.device(zmq.FORWARDER, 
+    #     # self._frontend_connector._socket, self._backend_connector._socket)
+    #     message = await frontend.recv()
+    #     await backend.send(message)
+    #     await zmq.asyncio.proxy(self._frontend_connector._socket, self._backend_connector)
+
 
 class NetworkLogPublisher:
     """

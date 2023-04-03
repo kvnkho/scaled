@@ -51,8 +51,10 @@ class SchedulerClusterCombo:
         
         if network_log_subscriber_address:
             self._network_log_subscriber_address = ZMQConfig.from_string(network_log_subscriber_address)
-        if network_log_publisher_address:
             self._network_log_publisher_address = ZMQConfig.from_string(network_log_publisher_address)
+        else:
+            self._network_log_subscriber_address = None
+            self._network_log_publisher_address = None          
 
 
         self._stop_event = multiprocessing.get_context("spawn").Event()

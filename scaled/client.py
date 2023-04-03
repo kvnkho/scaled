@@ -129,7 +129,6 @@ class Client:
                 MessageType.FunctionRequest,
                 FunctionRequest(FunctionRequestType.Add, function_id=task.function_id, content=function_bytes),
             )
-
         self._function_id_to_not_ready_tasks[task.function_id].append(task)
 
     def __on_function_response(self, response: FunctionResponse):

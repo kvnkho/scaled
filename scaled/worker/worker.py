@@ -131,8 +131,11 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 daemonic=False
             )
 
+
     def __run_forever(self):
         self._internal_connector.run()
+        if self._network_log_connector:
+            self._network_log_connector.run()
         self.shutdown()
 
     def __register_signal(self):
@@ -162,6 +165,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         logging.error(f"unknown request function request type {request=}")
 
     def __on_received_task(self, task: Task):
+
         begin = time.monotonic()
         try:
             function = self._cached_functions[task.function_id]
