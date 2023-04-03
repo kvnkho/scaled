@@ -206,7 +206,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 handler = NetworkLogHandler(self._network_log_connector)
                 handler.setLevel(logging.DEBUG)
                 logger.addHandler(handler)
-                logger.info("got heree")
+                logger.info("testing from wrapper")
                 fn(*args, **kwargs)
             return wrapper
         return fn

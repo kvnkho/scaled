@@ -31,18 +31,23 @@ from scaled.protocol.python.message import (
     TaskResult,
     TaskStatus,
 )
+from scaled.utility.logging.network import NetworkLogPublisher
 
 
 class Client:
-    def __init__(self, address: str, serializer: FunctionSerializerType = DefaultSerializer()):
+    def __init__(self, 
+                 address: str, 
+                 serializer: FunctionSerializerType = DefaultSerializer(),
+                 log_address: str = None,
+                 ):
+        context = zmq.Context.instance()
         self._address = address
         self._serializer = serializer
-
         self._stop_event = threading.Event()
         self._connector = SyncConnector(
             stop_event=self._stop_event,
             prefix="C",
-            context=zmq.Context.instance(),
+            context=context,
             socket_type=zmq.DEALER,
             bind_or_connect="connect",
             address=ZMQConfig.from_string(address),
@@ -50,8 +55,16 @@ class Client:
             exit_callback=self.__on_exit,
             daemonic=True,
         )
+        if log_address:
+            self._log_publisher = NetworkLogPublisher(
+                log_address=log_address,
+                context = context
+            )
+            
         self._connector.start()
         logging.info(f"ScaledClient: connect to {address}")
+
+        self._log_publisher._internal_connector.start()
 
         self._function_to_function_id_cache: Dict[Callable, Tuple[bytes, bytes]] = dict()
 
@@ -98,6 +111,10 @@ class Client:
 
         if message_type == MessageType.TaskResult:
             self.__on_task_result(message)
+            return
+
+        if message_type == MessageType.TaskLog:
+            self.__on_task_log(message)
             return
 
         raise TypeError(f"Unknown {message_type=}")

@@ -20,13 +20,14 @@ from scaled.io.config import (
 )
 
 from scaled.utility.logging.scoped_logger import ScopedLogger
-from scaled.utility.logging.utility import setup_logger 
+from scaled.utility.logging.utility import setup_logger
+from scaled.utility.logging.network import NetworkLogPublisher
 
 import logging
 
 def sleep_print(sec: int):
     setup_logger()
-    logging.info("test")
+    logging.info("testing inside function")
     return sec * 1
 
 def main():
@@ -41,7 +42,8 @@ def main():
         network_log_subscriber_address=network_log_subscriber_address,
         network_log_publisher_address=network_log_publisher_address
     )
-    client = Client(address=address)
+
+    client = Client(address=address, log_address=network_log_publisher_address)
 
     tasks = [random.randint(0, 101) for _ in range(10)]
 

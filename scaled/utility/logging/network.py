@@ -1,13 +1,15 @@
 import logging
 import sys 
 import asyncio
+from typing import List
+import threading
 
 import zmq
 
 from scaled.utility.zmq_config import ZMQConfig
 from scaled.io.async_connector import AsyncConnector
 from scaled.io.sync_connector import SyncConnector
-from scaled.protocol.python.message import MessageType
+from scaled.protocol.python.message import MessageType, MessageVariant
 from scaled.protocol.python.message import TaskLog
 from scaled.protocol.python.serializer.default import DefaultSerializer
 
@@ -70,5 +72,30 @@ class NetworkLogPublisher:
     on the client side. It can be configured to write logs to file
     or simply stream to stdout.
     """
-    def __init__(self, internal_connector: AsyncConnector):
-        self._internal_connector = internal_connector
+    def __init__(self, 
+                 log_address: str, 
+                 context: zmq.Context,
+                 handlers: List[logging.Handler] = None):
+        self._internal_connector = SyncConnector(
+            stop_event=threading.Event(),
+            prefix="CL",
+            context=context,
+            socket_type=zmq.SUB,
+            bind_or_connect="connect",
+            address=ZMQConfig.from_string(log_address),
+            callback=self.__on_receive,
+            exit_callback=None,
+            daemonic=True,
+        )
+        self._internal_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
+        self.logger = logging.getLogger()
+        self.handlers = handlers or [logging.StreamHandler(sys.stdout)]
+        for handler in self.handlers:
+            self.logger.addHandler(handler)
+
+    def __on_receive(self, message_type: MessageType, message: TaskLog):
+        print("got something")
+        assert message_type == MessageType.TaskLog
+        self.logger.warn(f"client_log-{TaskLog.message}")
+        return
+
