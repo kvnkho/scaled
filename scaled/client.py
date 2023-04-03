@@ -112,11 +112,7 @@ class Client:
         if message_type == MessageType.TaskResult:
             self.__on_task_result(message)
             return
-
-        if message_type == MessageType.TaskLog:
-            self.__on_task_log(message)
-            return
-
+            
         raise TypeError(f"Unknown {message_type=}")
 
     def __on_task_echo(self, task_echo: TaskEcho):

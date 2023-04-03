@@ -1,14 +1,17 @@
-from scaled.io.sync_connector import SyncConnector
-import zmq
-from scaled.utility.zmq_config import ZMQConfig
+import attrs
 
-context = zmq.Context()
-socket = context.socket(zmq.SUB)
-socket.connect("tcp://127.0.0.1:3457")
-socket.setsockopt(zmq.SUBSCRIBE, b"")
+from typing import Tuple, List
 
-while True:
-    frames = socket.recv_multipart()
-    message_type_bytes, *payload = frames
-    print(message_type_bytes)
-    print(payload)
+@attrs.define
+class TaskLog():
+    message: bytes
+
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (self.message,)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return TaskLog(data[0])
+
+test = TaskLog(message=b"123")
+print(test.message)
