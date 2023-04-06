@@ -54,7 +54,7 @@ class SchedulerClusterCombo:
             processing_queue_size=processing_queue_size,
             event_loop=event_loop,
             serializer=serializer,
-            network_log_forwarding_address=network_log_forwarding_address,
+            network_log_address=network_log_forwarding_address,
             network_log_level=network_log_level
         )
         self._scheduler = SchedulerProcess(
@@ -66,7 +66,7 @@ class SchedulerClusterCombo:
             function_retention_seconds=function_retention_seconds,
             load_balance_seconds=load_balance_seconds,
             load_balance_trigger_times=load_balance_trigger_times,
-            network_log_forwarding_address=network_log_forwarding_address
+            network_log_forwarding_address=ZMQConfig.from_string(network_log_forwarding_address)
         )
 
         self._cluster.start()

@@ -32,7 +32,7 @@ class NetworkLogHandler(logging.Handler):
     def emit(self, record):
         self.__network_log_connector.send_immediately(
             MessageType.TaskLog,
-            TaskLog(self._serializer.serialize_result(record.msg)),
+            self._serializer.serialize_result(TaskLog(record.msg, record.levelname)),
         )
 
 

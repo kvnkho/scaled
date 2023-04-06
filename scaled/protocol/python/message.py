@@ -175,7 +175,7 @@ class TaskLog(_Message):
 
     @staticmethod
     def deserialize(data: List[bytes]):
-        return TaskLog(data[0])
+        return TaskLog(data[0], data[1])
 
 
 @attrs.define

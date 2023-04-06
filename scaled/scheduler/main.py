@@ -152,10 +152,12 @@ def _get_log_pub_sub_addresses(address) -> Tuple[ZMQConfig, ZMQConfig]:
     These will be used to forward logs from workers to the Client.
     """
     sub_address = ZMQConfig.to_address(address)
-    host = sub_address.split(':')[0]
-    pub_port = int(sub_address.split(':')[1])
-    pub_address = host + ":" + pub_port
+    host = ':'.join(sub_address.split(':')[0:2])
+    pub_port = int(sub_address.split(':')[2]) + 1
+    pub_address = f"{host}:{pub_port}"
+
     return ZMQConfig.from_string(sub_address), ZMQConfig.from_string(pub_address)
+
 
 @functools.wraps(Scheduler)
 async def scheduler_main(*args, **kwargs):

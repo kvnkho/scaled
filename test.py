@@ -34,13 +34,12 @@ def main():
     setup_logger()
 
     address = "tcp://127.0.0.1:2345"
-    network_log_subscriber_address = "tcp://127.0.0.1:3456"
+    network_log_forwarding_address = "tcp://127.0.0.1:3456"
     network_log_publisher_address = "tcp://127.0.0.1:3457"
 
     cluster = SchedulerClusterCombo(address=address, 
         n_workers=2, per_worker_queue_size=2, event_loop="builtin",
-        network_log_subscriber_address=network_log_subscriber_address,
-        network_log_publisher_address=network_log_publisher_address
+        network_log_forwarding_address=network_log_forwarding_address,
     )
 
     client = Client(address=address, log_address=network_log_publisher_address)
