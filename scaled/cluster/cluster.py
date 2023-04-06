@@ -24,7 +24,8 @@ class ClusterProcess(multiprocessing.get_context("spawn").Process):
         processing_queue_size: int,
         event_loop: str,
         serializer: Serializer,
-        network_log_address: ZMQConfig
+        network_log_forwarding_address: ZMQConfig,
+        network_log_level: int = logging.INFO
     ):
         multiprocessing.Process.__init__(self, name="WorkerMaster")
         assert isinstance(stop_event, EventClass)
@@ -39,7 +40,8 @@ class ClusterProcess(multiprocessing.get_context("spawn").Process):
         self._processing_queue_size = processing_queue_size
         self._event_loop = event_loop
         self._serializer = serializer
-        self._network_log_address = network_log_address
+        self._network_log_forwarding_address = network_log_forwarding_address
+        self._network_log_level = network_log_level
 
         self._workers: List[Worker] = []
 
@@ -75,7 +77,8 @@ class ClusterProcess(multiprocessing.get_context("spawn").Process):
                 processing_queue_size=self._processing_queue_size,
                 event_loop=self._event_loop,
                 serializer=self._serializer,
-                network_log_address=self._network_log_address
+                network_log_forwarding_address=self._network_log_forwarding_address
+                network_log_level=self._network_log_level
             )
             for i in range(self._n_workers)
         ]

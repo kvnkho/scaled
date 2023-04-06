@@ -3,6 +3,7 @@ import functools
 import json
 import logging
 import uuid
+from typing import Tuple
 
 import zmq.asyncio
 
@@ -30,8 +31,7 @@ class Scheduler:
         function_retention_seconds: int,
         load_balance_seconds: int,
         load_balance_trigger_times: int,
-        network_log_subscriber_address: ZMQConfig,
-        network_log_publisher_address: ZMQConfig,
+        network_log_forwarding_address: ZMQConfig,
     ):
         if address.type != ZMQType.tcp:
             raise TypeError(f"{self.__class__.__name__}: scheduler address must be tcp type: {address.to_address()}")
@@ -62,15 +62,15 @@ class Scheduler:
         self._status_reporter = StatusReporter(self._binder_monitor)
 
         # Setting up log forwarder responsible for bringing worker logs to client
-        # It subscribed to workers and publishes to the client
-        self._log_forwarder = None
-        if network_log_publisher_address and network_log_subscriber_address:
+        # It subscribes to workers and publishes to the client
+        if network_log_forwarding_address:
+            address_pair = _get_log_pub_sub_addresses(network_log_forwarding_address)
             self._log_forwarder = NetworkLogForwarder(
                 frontend_connector = AsyncConnector(
                     context = context,
                     prefix="WL",
                     socket_type=zmq.SUB,
-                    address=network_log_subscriber_address,
+                    address=address_pair[0],
                     bind_or_connect="bind",
                     callback=None,
                 ),
@@ -78,7 +78,7 @@ class Scheduler:
                     context = context,
                     prefix="CL",
                     socket_type=zmq.PUB,
-                    address=network_log_publisher_address,
+                    address=address_pair[1],
                     bind_or_connect="bind",
                     callback=None,
                 ),
@@ -144,6 +144,18 @@ class Scheduler:
         except asyncio.CancelledError:
             pass
 
+def _get_log_pub_sub_addresses(address) -> Tuple[ZMQConfig, ZMQConfig]:
+    """
+    Takes a ZMQConfig. Returns the address as the subcriber address,
+    and adds one to the port to generate the publisher address.
+
+    These will be used to forward logs from workers to the Client.
+    """
+    sub_address = ZMQConfig.to_address(address)
+    host = sub_address.split(':')[0]
+    pub_port = int(sub_address.split(':')[1])
+    pub_address = host + ":" + pub_port
+    return ZMQConfig.from_string(sub_address), ZMQConfig.from_string(pub_address)
 
 @functools.wraps(Scheduler)
 async def scheduler_main(*args, **kwargs):

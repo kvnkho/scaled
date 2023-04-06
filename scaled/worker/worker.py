@@ -39,7 +39,8 @@ class Worker(multiprocessing.get_context("spawn").Process):
         processing_queue_size: int,
         event_loop: str,
         serializer: FunctionSerializerType,
-        network_log_address: ZMQConfig
+        network_log_address: ZMQConfig,
+        network_log_level: int = logging.INFO
     ):
         multiprocessing.Process.__init__(self, name="Worker")
 
@@ -54,6 +55,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._stop_event = stop_event
         self._serializer = serializer
         self._network_log_address = network_log_address
+        self._network_log_level = network_log_level
 
 
         self._agent: Optional[AgentThread] = None
@@ -209,10 +211,8 @@ class Worker(multiprocessing.get_context("spawn").Process):
         """
         if self._network_log_address:
             def wrapper(*args, **kwargs):
-                # Set the level to debug so all logs get emitted
-                # It can be
                 logger = logging.getLogger()
-                logger.setLevel(logging.DEBUG)
+                logger.setLevel(self._network_log_level)
                 logger.addHandler(self._network_log_handler)
                 fn(*args, **kwargs)
             return wrapper
