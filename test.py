@@ -27,7 +27,7 @@ import logging
 
 def sleep_print(sec: int):
     setup_logger()
-    logging.info("testing inside function")
+    logging.warning("testing inside function")
     return sec * 1
 
 def main():
@@ -40,6 +40,7 @@ def main():
     cluster = SchedulerClusterCombo(address=address, 
         n_workers=2, per_worker_queue_size=2, event_loop="builtin",
         network_log_forwarding_address=network_log_forwarding_address,
+        network_log_level=logging.ERROR
     )
 
     client = Client(address=address, log_address=network_log_publisher_address)

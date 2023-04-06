@@ -96,7 +96,6 @@ class NetworkLogPublisher:
         Parses the TaskLog object and outputs it at the appropriate level
         """
         assert message_type == MessageType.TaskLog
-        
         level = logging._nameToLevel[log.level]
         self.logger.log(level=level, msg=log.message)
         return
