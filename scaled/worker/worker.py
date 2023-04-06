@@ -129,8 +129,9 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 address = self._network_log_address,
                 callback=None,
                 exit_callback=None,
-                daemonic=False
+                daemonic=True
             )
+            self._network_log_handler = self.__create_network_log_handler()
 
 
     def __run_forever(self):
@@ -170,7 +171,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         begin = time.monotonic()
         try:
             function = self._cached_functions[task.function_id]
-            function_with_logger = self.__add_network_handler(function)
+            function_with_logger = self.__add_network_log_handler(function)
             args = self._serializer.deserialize_arguments(tuple(arg.data for arg in task.function_args))
             result = function_with_logger(*args)
             result_bytes = self._serializer.serialize_result(result)
@@ -191,22 +192,28 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 ),
             )
 
+    def __create_network_log_handler(self):
+        """
+        Creates a singleton of the NetworkLogHandler to be reused. It can be
+        set to logging.DEBUG so that it just follows the level of the logger.
+        """
+        self._network_log_handler = NetworkLogHandler(self._network_log_connector)
+        self._network_log_handler.setLevel(logging.DEBUG)
+        return 
 
-    def __add_network_handler(self, fn: Callable) -> Callable:
+    def __add_network_log_handler(self, fn: Callable) -> Callable:
         """
         If a task already uses Python logging methods like "logger.info()",
         this function adds a handler to the existing logger that will emit
         logs over the network to the scheduler.
         """
-        if self._network_log_connector:
+        if self._network_log_address:
             def wrapper(*args, **kwargs):
-                # Add handler
-                logger = logging.getLogger("mylogger")
+                # Set the level to debug so all logs get emitted
+                # It can be
+                logger = logging.getLogger()
                 logger.setLevel(logging.DEBUG)
-                handler = NetworkLogHandler(self._network_log_connector)
-                handler.setLevel(logging.DEBUG)
-                logger.addHandler(handler)
-                logger.info("testing from wrapper")
+                logger.addHandler(self._network_log_handler)
                 fn(*args, **kwargs)
             return wrapper
         return fn

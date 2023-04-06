@@ -164,9 +164,11 @@ class TaskResult(_Message):
     def deserialize(data: List[bytes]):
         return TaskResult(data[0], TaskStatus(data[1]), struct.unpack("f", data[2])[0], data[3])
 
+
 @attrs.define
 class TaskLog(_Message):
     message: bytes
+    level: str
 
     def serialize(self) -> Tuple[bytes, ...]:
         return (self.message,)

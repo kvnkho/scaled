@@ -15,7 +15,7 @@ from scaled.protocol.python.serializer.default import DefaultSerializer
 
 class NetworkLogHandler(logging.Handler):
     """
-    The NetworkHandler is responsible for sending task
+    The NetworkLogHandler is responsible for sending task
     logs from the workers to the scheduler. The scheduler
     can then forward it to the workers.
 
@@ -62,8 +62,6 @@ class NetworkLogForwarder:
         if self._frontend_connector:
             frames = await self._frontend_connector._socket.recv_multipart()
             await self._backend_connector._socket.send_multipart(frames, copy=False)
-        else:
-            await asyncio.sleep(0)
 
 
 class NetworkLogPublisher:
@@ -93,8 +91,13 @@ class NetworkLogPublisher:
         for handler in self.handlers:
             self.logger.addHandler(handler)
 
-    def __on_receive(self, message_type: MessageType, message: TaskLog):
+    def __on_receive(self, message_type: MessageType, log: TaskLog):
+        """
+        Parses the TaskLog object and outputs it at the appropriate level
+        """
         assert message_type == MessageType.TaskLog
-        self.logger.warn(f"client_log-{message.message}")
+        
+        level = logging._nameToLevel[log.level]
+        self.logger.log(level=level, msg=log.message)
         return
 
