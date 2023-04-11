@@ -40,7 +40,6 @@ class SchedulerClusterCombo:
         per_worker_queue_size: int = DEFAULT_PER_WORKER_QUEUE_SIZE,
         serializer: Serializer = DefaultSerializer(),
         network_log_forwarding_address: str = None,
-        network_log_level: int = logging.INFO
     ):
         self._stop_event = multiprocessing.get_context("spawn").Event()
         self._cluster = ClusterProcess(
@@ -55,7 +54,6 @@ class SchedulerClusterCombo:
             event_loop=event_loop,
             serializer=serializer,
             network_log_address=ZMQConfig.from_string(network_log_forwarding_address),
-            network_log_level=network_log_level
         )
         self._scheduler = SchedulerProcess(
             address=ZMQConfig.from_string(address),

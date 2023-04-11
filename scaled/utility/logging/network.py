@@ -48,11 +48,14 @@ class NetworkLogForwarder:
     """
     def __init__(self, 
                  frontend_connector: AsyncConnector = None,
-                 backend_connector: AsyncConnector = None):
+                 backend_connector: AsyncConnector = None,
+                 high_watermark: int = 0):
         self._frontend_connector = frontend_connector
         self._backend_connector = backend_connector
         if self._frontend_connector:
             self._frontend_connector._socket.setsockopt(zmq.SUBSCRIBE, b"")
+            self._frontend_connector._socket.setsockopt(zmq.ZMQ_RCVHWM, high_watermark)
+            self._backend_connector._socket.setsockopt(zmq.ZMQ_SNDHWM, high_watermark)
 
 
     async def routine(self):

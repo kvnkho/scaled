@@ -55,7 +55,6 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._stop_event = stop_event
         self._serializer = serializer
         self._network_log_address = network_log_address
-        self._network_log_level = network_log_level
 
 
         self._agent: Optional[AgentThread] = None
@@ -208,11 +207,12 @@ class Worker(multiprocessing.get_context("spawn").Process):
         If a task already uses Python logging methods like "logger.info()",
         this function adds a handler to the existing logger that will emit
         logs over the network to the scheduler.
+
+        The log level should be set from the 
         """
         if self._network_log_address:
             def wrapper(*args, **kwargs):
                 logger = logging.getLogger()
-                logger.setLevel(self._network_log_level)
                 logger.addHandler(self._network_log_handler)
                 fn(*args, **kwargs)
             return wrapper
