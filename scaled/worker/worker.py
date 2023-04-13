@@ -23,6 +23,7 @@ from scaled.protocol.python.message import (
 )
 from scaled.worker.agent.agent_thread import AgentThread
 from scaled.worker.memory_cleaner import MemoryCleaner
+from scaled.utility.logging.network import NetworkLogHandler
 
 
 class Worker(multiprocessing.get_context("spawn").Process):
@@ -38,6 +39,8 @@ class Worker(multiprocessing.get_context("spawn").Process):
         processing_queue_size: int,
         event_loop: str,
         serializer: FunctionSerializerType,
+        network_log_address: ZMQConfig,
+        network_log_level: int = logging.INFO
     ):
         multiprocessing.Process.__init__(self, name="Worker")
 
@@ -51,13 +54,17 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._event_loop = event_loop
         self._stop_event = stop_event
         self._serializer = serializer
+        self._network_log_address = network_log_address
+
 
         self._agent: Optional[AgentThread] = None
         self._internal_connector: Optional[SyncConnector] = None
         self._cleaner: Optional[MemoryCleaner] = None
         self._ready_event = multiprocessing.get_context("spawn").Event()
+        self._network_log_connector: Optional[SyncConnector] = None
 
         self._cached_functions: Dict[bytes, Callable] = {}
+
 
     def wait_till_ready(self):
         while not self._ready_event.is_set():
@@ -112,8 +119,26 @@ class Worker(multiprocessing.get_context("spawn").Process):
         # worker is ready
         self._ready_event.set()
 
+        # create separate connector for logs
+        if self._network_log_address:
+            self._network_log_connector = SyncConnector(
+                stop_event = self._stop_event,
+                prefix = "AWL",
+                context = context,
+                socket_type = zmq.PUB,
+                bind_or_connect = "connect",
+                address = self._network_log_address,
+                callback=None,
+                exit_callback=None,
+                daemonic=True
+            )
+            self._network_log_handler = self.__create_network_log_handler()
+
+
     def __run_forever(self):
         self._internal_connector.run()
+        if self._network_log_connector:
+            self._network_log_connector.run()
         self.shutdown()
 
     def __register_signal(self):
@@ -143,11 +168,13 @@ class Worker(multiprocessing.get_context("spawn").Process):
         logging.error(f"unknown request function request type {request=}")
 
     def __on_received_task(self, task: Task):
+
         begin = time.monotonic()
         try:
             function = self._cached_functions[task.function_id]
+            function_with_logger = self.__add_network_log_handler(function)
             args = self._serializer.deserialize_arguments(tuple(arg.data for arg in task.function_args))
-            result = function(*args)
+            result = function_with_logger(*args)
             result_bytes = self._serializer.serialize_result(result)
             self._internal_connector.send_immediately(
                 MessageType.TaskResult,
@@ -165,3 +192,28 @@ class Worker(multiprocessing.get_context("spawn").Process):
                     pickle.dumps(e, protocol=pickle.HIGHEST_PROTOCOL),
                 ),
             )
+
+    def __create_network_log_handler(self):
+        """
+        Creates a singleton of the NetworkLogHandler to be reused. It can be
+        set to logging.DEBUG so that it just follows the level of the logger.
+        """
+        self._network_log_handler = NetworkLogHandler(self._network_log_connector)
+        self._network_log_handler.setLevel(logging.DEBUG)
+        return 
+
+    def __add_network_log_handler(self, fn: Callable) -> Callable:
+        """
+        If a task already uses Python logging methods like "logger.info()",
+        this function adds a handler to the existing logger that will emit
+        logs over the network to the scheduler.
+
+        The log level should be set from the 
+        """
+        if self._network_log_address:
+            def wrapper(*args, **kwargs):
+                logger = logging.getLogger()
+                logger.addHandler(self._network_log_handler)
+                fn(*args, **kwargs)
+            return wrapper
+        return fn

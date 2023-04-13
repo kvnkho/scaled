@@ -67,7 +67,12 @@ def get_args():
         "--event-loop", "-e", default="builtin", choices=EventLoopType.allowed_types(), help="select event loop type"
     )
     parser.add_argument("address", type=ZMQConfig.from_string, help="scheduler address to connect to")
-
+    parser.add_argument(
+        "--network-log-subscriber-address", "-lsa", default="tcp://127.0.0.1:3456", type=ZMQConfig.from_string, help="scheduler address to send logs to"
+    )
+    parser.add_argument(
+        "--network-log-publisher-address", "-lpa", default="tcp://127.0.0.1:3457", type=ZMQConfig.from_string, help="scheduler address to publish logs from"
+    )
     return parser.parse_args()
 
 
@@ -89,6 +94,8 @@ def main():
             function_retention_seconds=args.function_retention_seconds,
             load_balance_seconds=args.load_balance_seconds,
             load_balance_trigger_times=args.load_balance_trigger_times,
+            network_log_subscriber_address=args.network_log_subscriber_address,
+            network_log_publisher_address=args.network_log_publisher_address,
         )
     )
 
