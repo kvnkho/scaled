@@ -18,6 +18,7 @@ from scaled.protocol.python.serializer.default import DefaultSerializer
 from scaled.protocol.python.message import (
     Argument,
     ArgumentType,
+    ClientShutdown,
     FunctionRequest,
     FunctionRequestType,
     FunctionResponse,
@@ -87,6 +88,11 @@ class Client:
         future = Future()
         self._task_id_to_future[task_id] = future
         return future
+
+    def shutdown(self):
+        # Shuts down all workers
+        self._connector.send_immediately(MessageType.ClientShutdown, ClientShutdown(b""))
+        return
 
     def disconnect(self):
         self._stop_event.set()

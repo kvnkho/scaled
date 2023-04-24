@@ -8,11 +8,11 @@ from scaled.io.async_connector import AsyncConnector
 from scaled.io.config import CLEANUP_INTERVAL_SECONDS, STATUS_REPORT_INTERVAL_SECONDS
 from scaled.scheduler.client_manager.vanilla import VanillaClientManager
 from scaled.scheduler.function_manager.vanilla import VanillaFunctionManager
-from scaled.scheduler.status_reporter import StatusReporter
+from scaled.scheduler.status_reporter import StatusReporter, HeartbeatReporter
 from scaled.utility.event_loop import create_async_loop_routine
 from scaled.utility.zmq_config import ZMQConfig, ZMQType
 from scaled.io.async_binder import AsyncBinder
-from scaled.protocol.python.message import MessageType, MessageVariant
+from scaled.protocol.python.message import MessageType, MessageVariant, ClientShutdown
 from scaled.scheduler.task_manager.vanilla import VanillaTaskManager
 from scaled.scheduler.worker_manager.vanilla import VanillaWorkerManager
 
@@ -55,6 +55,7 @@ class Scheduler:
             load_balance_trigger_times=load_balance_trigger_times,
         )
         self._status_reporter = StatusReporter(self._binder_monitor)
+        self._heartbeat_reporter = HeartbeatReporter(self._binder_monitor)
 
         self._binder.register(self.on_receive_message)
         self._function_manager.hook(self._binder)
@@ -98,6 +99,13 @@ class Scheduler:
             await self._worker_manager.on_disconnect(source, message)
             return
 
+        if message_type == MessageType.ClientShutdown:
+            # Forward from Client to Workers
+            await self._binder_monitor.send(
+                (MessageType.ClientShutdown, ClientShutdown(b""))
+            )
+            return
+
         logging.error(f"{self.__class__.__name__}: unknown {message_type} from {source=}: {message}")
 
     async def get_loops(self):
@@ -108,6 +116,7 @@ class Scheduler:
                 create_async_loop_routine(self._function_manager.routine, CLEANUP_INTERVAL_SECONDS),
                 create_async_loop_routine(self._worker_manager.routine, CLEANUP_INTERVAL_SECONDS),
                 create_async_loop_routine(self._status_reporter.routine, STATUS_REPORT_INTERVAL_SECONDS),
+                create_async_loop_routine(self._heartbeat_reporter.routine, 15),
                 return_exceptions=True,
             )
         except asyncio.CancelledError:

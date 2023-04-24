@@ -5,7 +5,7 @@ from typing import List
 import psutil
 
 from scaled.io.async_connector import AsyncConnector
-from scaled.protocol.python.message import MessageType, SchedulerStatus
+from scaled.protocol.python.message import MessageType, SchedulerStatus, SchedulerHeartbeat
 from scaled.scheduler.mixins import Looper, Reporter
 
 
@@ -23,3 +23,11 @@ class StatusReporter(Looper):
         stats = dict(ChainMap(*[await manager.statistics() for manager in self._managers]))
         stats["scheduler"] = {"cpu": self._process.cpu_percent() / 100, "rss": self._process.memory_info().rss}
         await self._monitor_binder.send(MessageType.SchedulerStatus, SchedulerStatus(json.dumps(stats).encode()))
+
+
+class HeartbeatReporter(Looper):
+    def __init__(self, binder: AsyncConnector):
+        self._heartbeat_binder = binder
+
+    async def routine(self):
+        await self._heartbeat_binder.send(MessageType.SchedulerHeartbeat, SchedulerHeartbeat(b""))
