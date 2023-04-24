@@ -1,7 +1,8 @@
 import asyncio
 import multiprocessing
 import signal
-from typing import Optional
+import time
+from typing import Optional, Tuple
 
 import zmq.asyncio
 
@@ -25,6 +26,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         trim_memory_threshold_bytes: int,
         serializer: FunctionSerializerType,
         function_retention_seconds: int,
+        death_timeout_seconds: int,
     ):
         multiprocessing.Process.__init__(self, name="Agent")
 
@@ -36,11 +38,13 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._trim_memory_threshold_bytes = trim_memory_threshold_bytes
         self._serializer = serializer
         self._function_retention_seconds = function_retention_seconds
+        self._death_timeout_seconds = death_timeout_seconds
 
         self._connector_external: Optional[AsyncConnector] = None
         self._task_manager: Optional[VanillaTaskManager] = None
         self._heartbeat: Optional[VanillaHeartbeatManager] = None
         self._processor_manager: Optional[VanillaProcessorManager] = None
+        self._scheduler_last_seen = time.time()
 
     @property
     def identity(self):
@@ -53,13 +57,24 @@ class Worker(multiprocessing.get_context("spawn").Process):
     def __initialize(self):
         register_event_loop(self._event_loop)
 
+        context = zmq.asyncio.Context()
         self._connector_external = AsyncConnector(
-            context=zmq.asyncio.Context(),
+            context=context,
             prefix="W",
             socket_type=zmq.DEALER,
             address=self._address,
             bind_or_connect="connect",
             callback=self.__on_receive_external,
+        )
+
+        # This connector is used for PUB/SUB uses like scheduler heartbeat
+        self._connector_subscribe = AsyncConnector(
+            context=context,
+            prefix="WT",
+            socket_type=zmq.SUB,
+            address=__get_next_address(self._address),
+            bind_or_connect="connect",
+            callback=self.__on_receive_subscribe,
         )
 
         self._task_manager = VanillaTaskManager()
@@ -103,6 +118,20 @@ class Worker(multiprocessing.get_context("spawn").Process):
 
         raise TypeError(f"Unknown {message_type=} {message=}")
 
+    async def __on_receive_subscribe(self, message_type: MessageType, message: MessageVariant):
+        if message_type == MessageType.SchedulerHeartbeat:
+            # Refresh scheduler last seen
+            self._scheduler_last_seen = time.time()
+            return
+
+        # Client issues command to shut down worker
+        if message_type == MessageType.ClientShutdown:
+            self.__destroy()
+
+        # Scheduler will also be emitting a status
+        if message_type == MessageType.SchedulerStatus:
+            pass
+
     async def __get_loops(self):
         try:
             await asyncio.gather(
@@ -110,6 +139,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 create_async_loop_routine(self._task_manager.routine, 0),
                 create_async_loop_routine(self._heartbeat.routine, self._heartbeat_interval_seconds),
                 create_async_loop_routine(self._processor_manager.routine, 0),
+                create_async_loop_routine(self.__check_death_timeout, 30),
                 return_exceptions=True,
             )
         except asyncio.CancelledError:
@@ -124,6 +154,11 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._connector_external.destroy()
         self._processor_manager.destroy()
 
+    async def __check_death_timeout(self):
+        # Shutdown the worker if it hasn't heard from the scheduler
+        if (time.time() - self._scheduler_last_seen) >= self._death_timeout_seconds:
+            self.__destroy()
+
     def __run_forever(self):
         self._loop.run_until_complete(self._task)
 
@@ -133,3 +168,14 @@ class Worker(multiprocessing.get_context("spawn").Process):
 
     def __destroy(self):
         self._task.cancel()
+
+def __get_next_address(address: ZMQConfig) -> Tuple[ZMQConfig, ZMQConfig]:
+    """
+    Takes a ZMQConfig. Returns the next port.
+    """
+    address_str = ZMQConfig.to_address(address)
+    host = ':'.join(ZMQConfig.to_address(address).split(':')[0:2])
+    port = int(address_str.split(':')[2]) + 1
+    next_address = f"{host}:{port}"
+
+    return ZMQConfig.from_string(next_address)

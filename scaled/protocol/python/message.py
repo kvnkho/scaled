@@ -28,11 +28,16 @@ class MessageType(enum.Enum):
     FunctionResponse = b"FA"
 
     SchedulerStatus = b"MS"
+    SchedulerHeartbeat = b"MH"
 
     DisconnectRequest = b"DR"
     DisconnectResponse = b"DP"
 
     ProcessorInitialize = b"PI"
+
+    ClientShutdown = b"CS"
+
+
 
     @staticmethod
     def allowed_values():
@@ -373,6 +378,31 @@ class SchedulerStatus(_Message):
         return SchedulerStatus(data[0])
 
 
+@attrs.define
+class SchedulerHeartbeat(_Message):
+    data: bytes 
+
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (self.data,)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return SchedulerHeartbeat(data[0])
+
+
+@attrs.define
+class ClientShutdown(_Message):
+    # Used by the Client to shut down all workers
+    data: bytes  
+
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (self.data,)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return ClientShutdown(data[0])
+
+
 PROTOCOL = {
     MessageType.Heartbeat.value: Heartbeat,
     MessageType.Task.value: Task,
@@ -393,4 +423,6 @@ PROTOCOL = {
     MessageType.DisconnectResponse.value: DisconnectResponse,
     MessageType.ProcessorInitialize.value: ProcessorInitialize,
     MessageType.SchedulerStatus.value: SchedulerStatus,
+    MessageType.SchedulerHeartbeat.value: SchedulerHeartbeat,
+    MessageType.ClientShutdown.value: ClientShutdown,
 }
