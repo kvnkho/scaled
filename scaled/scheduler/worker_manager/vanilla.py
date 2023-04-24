@@ -165,16 +165,6 @@ class VanillaWorkerManager(WorkerManager, Looper, Reporter):
         for dead_worker in dead_workers:
             await self.__disconnect_worker(dead_worker)
 
-    async def __send_scheduler_heartbeat(self):
-        now = time.time()
-        dead_workers = [
-            dead_worker
-            for dead_worker, (alive_since, info) in self._worker_alive_since.items()
-            if now - alive_since > self._timeout_seconds
-        ]
-        for dead_worker in dead_workers:
-            await self.__disconnect_worker(dead_worker)
-
     async def __reroute_tasks(self, task_ids: List[bytes]):
         for task_id in task_ids:
             await self._task_manager.on_task_reroute(task_id)
