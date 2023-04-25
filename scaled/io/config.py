@@ -51,3 +51,6 @@ DEFAULT_GARBAGE_COLLECT_INTERVAL_SECONDS = 30
 
 # number of bytes threshold for worker process that trigger deep garbage collection
 DEFAULT_TRIM_MEMORY_THRESHOLD_BYTES = 1024 * 1024 * 1024
+
+# number of seconds without scheduler contact before worker shuts down
+DEFAULT_WORKER_DEATH_TIMEOUT = 5 * 60

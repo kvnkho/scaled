@@ -1,18 +1,20 @@
 import asyncio
 import multiprocessing
 import signal
+import time
 from typing import Optional
 
 import zmq.asyncio
 
 from scaled.io.async_connector import AsyncConnector
-from scaled.protocol.python.message import BalanceResponse, DisconnectRequest, MessageType, MessageVariant
+from scaled.protocol.python.message import BalanceResponse, DisconnectRequest, HeartbeatEcho, MessageType, MessageVariant
 from scaled.protocol.python.serializer.mixins import FunctionSerializerType
 from scaled.utility.event_loop import create_async_loop_routine, register_event_loop
 from scaled.utility.zmq_config import ZMQConfig
 from scaled.worker.agent.heartbeat import VanillaHeartbeatManager
 from scaled.worker.agent.task_manager import VanillaTaskManager
 from scaled.worker.agent.processor_manager import VanillaProcessorManager
+
 
 
 class Worker(multiprocessing.get_context("spawn").Process):
@@ -25,6 +27,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
         trim_memory_threshold_bytes: int,
         serializer: FunctionSerializerType,
         function_retention_seconds: int,
+        death_timeout_seconds: int,
     ):
         multiprocessing.Process.__init__(self, name="Agent")
 
@@ -36,6 +39,8 @@ class Worker(multiprocessing.get_context("spawn").Process):
         self._trim_memory_threshold_bytes = trim_memory_threshold_bytes
         self._serializer = serializer
         self._function_retention_seconds = function_retention_seconds
+        self._death_timeout_seconds = death_timeout_seconds
+        self._scheduler_last_seen = time.time()
 
         self._connector_external: Optional[AsyncConnector] = None
         self._task_manager: Optional[VanillaTaskManager] = None
@@ -101,6 +106,10 @@ class Worker(multiprocessing.get_context("spawn").Process):
             await self._processor_manager.on_add_function(message)
             return
 
+        if message_type == MessageType.HeartbeatEcho:
+            await self._update_scheduler_last_seen(message)
+            return
+
         raise TypeError(f"Unknown {message_type=} {message=}")
 
     async def __get_loops(self):
@@ -110,6 +119,7 @@ class Worker(multiprocessing.get_context("spawn").Process):
                 create_async_loop_routine(self._task_manager.routine, 0),
                 create_async_loop_routine(self._heartbeat.routine, self._heartbeat_interval_seconds),
                 create_async_loop_routine(self._processor_manager.routine, 0),
+                create_async_loop_routine(self._check_death_timeout, self._heartbeat_interval_seconds),
                 return_exceptions=True,
             )
         except asyncio.CancelledError:
@@ -123,6 +133,18 @@ class Worker(multiprocessing.get_context("spawn").Process):
 
         self._connector_external.destroy()
         self._processor_manager.destroy()
+
+    async def _update_scheduler_last_seen(self, message: HeartbeatEcho):
+        if message.kill == True:
+            # subtract the last seen by death timeout seconds to kill next check
+            self._scheduler_last_seen -= self._death_timeout_seconds
+        else:
+            self._scheduler_last_seen = time.time()
+
+    async def _check_death_timeout(self):
+        # Return boolean whether or not to shutdown
+        if (time.time() - self._scheduler_last_seen) >= self._death_timeout_seconds:
+            self.__destroy()
 
     def __run_forever(self):
         self._loop.run_until_complete(self._task)

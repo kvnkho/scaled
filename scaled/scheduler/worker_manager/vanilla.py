@@ -10,6 +10,7 @@ from scaled.protocol.python.message import (
     DisconnectRequest,
     DisconnectResponse,
     Heartbeat,
+    HeartbeatEcho,
     MessageType,
     Task,
     TaskCancelEcho,
@@ -40,6 +41,7 @@ class VanillaWorkerManager(WorkerManager, Looper, Reporter):
 
         self._last_balance_advice = None
         self._load_balance_advice_same_count = 0
+        self._kill_workers = False
 
     def hook(self, binder: AsyncBinder, task_manager: TaskManager):
         self._binder = binder
@@ -107,6 +109,13 @@ class VanillaWorkerManager(WorkerManager, Looper, Reporter):
             logging.info(f"worker {worker} connected")
 
         self._worker_alive_since[worker] = (time.time(), info)
+
+        # Client can change the value of self._kill_workers to True. Default is False.
+        await self._binder.send(worker, MessageType.HeartbeatEcho, HeartbeatEcho(self._kill_workers))
+
+    async def on_client_shutdown(self):
+        # This will send a kill request next HeartbeatEcho
+        self._kill_workers = True
 
     async def on_disconnect(self, source: bytes, request: DisconnectRequest):
         await self.__disconnect_worker(request.worker)
