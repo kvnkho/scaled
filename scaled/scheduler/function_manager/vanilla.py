@@ -3,6 +3,8 @@ from collections import defaultdict
 import time
 from typing import Dict, Optional, Set
 
+import cloudpickle
+
 from scaled.io.async_binder import AsyncBinder
 from scaled.protocol.python.message import (
     FunctionRequest,
@@ -97,7 +99,8 @@ class VanillaFunctionManager(FunctionManager, Looper, Reporter):
     async def statistics(self) -> Dict:
         return {
             "function_manager": {
-                "function_id_to_tasks": {k.hex(): len(v) for k, v in self._function_id_to_task_ids.items()}
+                "function_id_to_tasks": {k.hex(): len(v) for k, v in self._function_id_to_task_ids.items()},
+                "function_id_to_function": {k.hex(): v for k, v in self._function_id_to_function.items()}
             }
         }
 

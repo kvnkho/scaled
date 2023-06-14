@@ -95,7 +95,7 @@ def show_status(status: SchedulerStatus, screen, config):
     received_table = __generate_keyword_data("scheduler_received", data["binder"]["received"], format_integer=True)
     # client_table = __generate_keyword_data("client_manager", data["client_manager"])
     function_id_to_tasks = __generate_keyword_data(
-        "function_id_to_tasks", data["function_manager"]["function_id_to_tasks"], truncate_key=24
+        "function_id_to_tasks", data["function_manager"]["function_id_to_tasks"], truncate_key=-16
     )
     worker_manager_table = __generate_worker_manager_table(
         data["worker_manager"], truncate_number=24, sort_by=config["sort_by"]

@@ -39,8 +39,8 @@ class AsyncBinder(Looper, Reporter):
 
         source, message_type_bytes, payload = frames[0], frames[1], frames[2:]
         message_type = MessageType(message_type_bytes)
-        self.__count_one("received", message_type)
         message = PROTOCOL[message_type_bytes].deserialize(payload)
+        self.__count_one("received", message_type, message)
         await self._callback(source, message_type, message)
 
     async def statistics(self) -> Dict:
@@ -52,7 +52,7 @@ class AsyncBinder(Looper, Reporter):
         }
 
     async def send(self, to: bytes, message_type: MessageType, message: MessageVariant):
-        self.__count_one("sent", message_type)
+        self.__count_one("sent", message_type, message)
         await self._socket.send_multipart([to, message_type.value, *message.serialize()], copy=False)
 
     def __set_socket_options(self):
@@ -71,7 +71,18 @@ class AsyncBinder(Looper, Reporter):
 
         return True
 
-    def __count_one(self, count_type: Literal["sent", "received"], message_type: MessageType):
+    def __count_one(self, count_type: Literal["sent", "received"], message_type: MessageType, message: MessageVariant):
+        message_type_to_str = {
+            MessageType.Task: "Task",
+            MessageType.FunctionRequest: "FunctionReq",
+            MessageType.FunctionResponse: "FunctionRes",
+        }
+        if message_type in message_type_to_str.keys():
+            prefix = message_type_to_str[message_type]
+            key = f"{prefix}-{message.function_id.hex()}"
+            self._statistics[count_type][key] += 1
+            return
+
         self._statistics[count_type][message_type.name] += 1
 
     def __get_prefix(self):
