@@ -54,6 +54,7 @@ class GraphManager(GraphTaskManager, Looper, Reporter):
         self._function_id_to_functions: Dict[bytes, bytes] = dict()
         self._task_id_to_function_id: Dict[bytes, bytes] = dict()
         self._function_id_to_task_ids: Dict[bytes, Set[bytes]] = defaultdict(set)
+        self._function_id_to_function_name: Dict[bytes, str] = dict()
 
         self._graph_task_id_to_target_task_ids: Dict[bytes, Set[bytes]] = defaultdict(set)
         self._graph_task_id_to_sorter: Dict[bytes, TopologicalSorter] = dict()
@@ -146,7 +147,7 @@ class GraphManager(GraphTaskManager, Looper, Reporter):
             await self._function_manager.on_function(
                 client,
                 FunctionRequest(
-                    FunctionRequestType.Add, task.function_id, self._function_id_to_functions[task.function_id]
+                    FunctionRequestType.Add, task.function_id, ,self._function_id_to_functions[task.function_id]
                 ),
             )
             task.function_args = [self.__get_argument(graph_task_id, task_id, arg) for arg in task.function_args]

@@ -72,16 +72,16 @@ class AsyncBinder(Looper, Reporter):
         return True
 
     def __count_one(self, count_type: Literal["sent", "received"], message_type: MessageType, message: MessageVariant):
-        message_type_to_str = {
-            MessageType.Task: "Task",
-            MessageType.FunctionRequest: "FunctionReq",
-            MessageType.FunctionResponse: "FunctionRes",
-        }
-        if message_type in message_type_to_str.keys():
-            prefix = message_type_to_str[message_type]
-            key = f"{prefix}-{message.function_id.hex()}"
-            self._statistics[count_type][key] += 1
-            return
+        # message_type_to_str = {
+        #     MessageType.Task: "Task",
+        #     MessageType.FunctionRequest: "FunctionReq",
+        #     MessageType.FunctionResponse: "FunctionRes",
+        # }
+        # if message_type in message_type_to_str.keys():
+        #     prefix = message_type_to_str[message_type]
+        #     key = f"{prefix}-{message.function_id.hex()}"
+        #     self._statistics[count_type][key] += 1
+        #     return
 
         self._statistics[count_type][message_type.name] += 1
 

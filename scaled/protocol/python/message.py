@@ -316,14 +316,15 @@ class Heartbeat(_Message):
 class FunctionRequest(_Message):
     type: FunctionRequestType
     function_id: bytes
+    function_name: str
     content: bytes
 
     def serialize(self) -> Tuple[bytes, ...]:
-        return self.type.value, self.function_id, self.content
+        return self.type.value, self.function_id, struct.pack("s", self.function_name), self.content
 
     @staticmethod
     def deserialize(data: List[bytes]):
-        return FunctionRequest(FunctionRequestType(data[0]), data[1], data[2])
+        return FunctionRequest(FunctionRequestType(data[0]), data[1], struct.unpack("s", data[2])[0], data[3])
 
 
 @dataclasses.dataclass

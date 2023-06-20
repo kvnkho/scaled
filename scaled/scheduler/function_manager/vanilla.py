@@ -3,8 +3,6 @@ from collections import defaultdict
 import time
 from typing import Dict, Optional, Set
 
-import cloudpickle
-
 from scaled.io.async_binder import AsyncBinder
 from scaled.protocol.python.message import (
     FunctionRequest,
@@ -22,6 +20,7 @@ class VanillaFunctionManager(FunctionManager, Looper, Reporter):
         self._function_id_to_alive_since: Dict[bytes, float] = dict()
 
         self._function_id_to_task_ids: Dict[bytes, Set[bytes]] = defaultdict(set)
+        self._function_id_to_function_name: Dict[bytes, str] = dict()
 
         self._function_retention_seconds = function_retention_seconds
 
@@ -31,6 +30,8 @@ class VanillaFunctionManager(FunctionManager, Looper, Reporter):
         self._binder = binder
 
     async def on_function(self, source: bytes, request: FunctionRequest):
+        self._function_id_to_function_name[request.function_id] = request.function_name
+        
         if request.type == FunctionRequestType.Check:
             await self.__on_function_check(source, request.function_id)
             return

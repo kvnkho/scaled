@@ -66,6 +66,7 @@ class Client:
         self._task_id_to_task: Dict[bytes, Task] = dict()
         self._task_id_to_function: Dict[bytes, bytes] = dict()
         self._task_id_to_future: Dict[bytes, Future] = dict()
+        self._function_id_to_function_name: Dict[bytes, str] = dict()
 
         self._function_id_to_not_ready_tasks: Dict[bytes, List[Task]] = defaultdict(list)
 
@@ -77,6 +78,7 @@ class Client:
 
     def submit(self, fn: Callable, *args, **kwargs) -> Future:
         function_id, function_bytes = self.__get_function_id(fn)
+        function_name = fn.__name__
 
         task_id = uuid.uuid1().bytes
         all_args = Client.__convert_kwargs_to_args(fn, args, kwargs)
@@ -88,6 +90,7 @@ class Client:
         )
         self._task_id_to_task[task_id] = task
         self._task_id_to_function[task_id] = function_bytes
+        self._function_id_to_function_name[function_id] = function_name
 
         self.__on_buffer_task_send(task)
 
@@ -162,9 +165,11 @@ class Client:
     def __on_buffer_task_send(self, task):
         if task.function_id not in self._function_id_to_not_ready_tasks:
             function_bytes = self._task_id_to_function[task.task_id]
+            function_name = self._function_id_to_function_name[task.function_id]
+
             self._connector.send(
                 MessageType.FunctionRequest,
-                FunctionRequest(FunctionRequestType.Add, function_id=task.function_id, content=function_bytes),
+                FunctionRequest(FunctionRequestType.Add, function_id=task.function_id, function_name=function_name, content=function_bytes),
             )
 
         self._function_id_to_not_ready_tasks[task.function_id].append(task)

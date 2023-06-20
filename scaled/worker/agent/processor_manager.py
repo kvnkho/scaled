@@ -77,7 +77,7 @@ class VanillaProcessorManager(Looper, ProcessorManager):
     async def on_function_request(self, request: FunctionRequest):
         if request.type == FunctionRequestType.Delete:
             await self._connector.send(
-                MessageType.FunctionRequest, FunctionRequest(FunctionRequestType.Delete, request.function_id, b"")
+                MessageType.FunctionRequest, FunctionRequest(FunctionRequestType.Delete, request.function_id, "",b"")
             )
             return
 
