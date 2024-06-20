@@ -23,6 +23,7 @@ class MessageType(enum.Enum):
     BalanceResponse = b"BR"
 
     Heartbeat = b"HB"
+    HeartbeatEcho = b"HE"
 
     FunctionRequest = b"FR"
     FunctionResponse = b"FA"
@@ -33,6 +34,8 @@ class MessageType(enum.Enum):
     DisconnectResponse = b"DP"
 
     ProcessorInitialize = b"PI"
+
+    ClientShutdown = b"CS"
 
     @staticmethod
     def allowed_values():
@@ -314,6 +317,22 @@ class Heartbeat(_Message):
 
 
 @attrs.define
+class HeartbeatEcho(_Message):
+    """
+    Sent from scheduler to worker as a response to heartbeat.
+    Request can be to maintain or kill worker.
+    """
+    kill: bool
+
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (struct.pack("?", self.kill),)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return HeartbeatEcho(struct.unpack("?", data[0])[0])
+
+
+@attrs.define
 class FunctionRequest(_Message):
     type: FunctionRequestType
     function_id: bytes
@@ -376,6 +395,16 @@ class ProcessorInitialize(_Message):
 
 
 @attrs.define
+class ClientShutdown(_Message):
+    def serialize(self) -> Tuple[bytes, ...]:
+        return (b"",)
+
+    @staticmethod
+    def deserialize(data: List[bytes]):
+        return ClientShutdown()
+
+
+@attrs.define
 class SchedulerStatus(_Message):
     data: bytes  # json content represent in bytes
 
@@ -389,6 +418,7 @@ class SchedulerStatus(_Message):
 
 PROTOCOL = {
     MessageType.Heartbeat.value: Heartbeat,
+    MessageType.HeartbeatEcho.value: HeartbeatEcho,
     MessageType.Task.value: Task,
     MessageType.TaskEcho.value: TaskEcho,
     MessageType.TaskCancel.value: TaskCancel,
@@ -406,5 +436,6 @@ PROTOCOL = {
     MessageType.DisconnectRequest.value: DisconnectRequest,
     MessageType.DisconnectResponse.value: DisconnectResponse,
     MessageType.ProcessorInitialize.value: ProcessorInitialize,
+    MessageType.ClientShutdown.value: ClientShutdown,
     MessageType.SchedulerStatus.value: SchedulerStatus,
 }

@@ -77,6 +77,10 @@ class Scheduler:
             await self._worker_manager.on_heartbeat(source, message)
             return
 
+        if message_type == MessageType.ClientShutdown:
+            await self._worker_manager.on_client_shutdown()
+            return
+
         if message_type == MessageType.BalanceResponse:
             await self._worker_manager.on_balance_response(message)
             return

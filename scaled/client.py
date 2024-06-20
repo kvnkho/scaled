@@ -19,6 +19,7 @@ from scaled.protocol.python.serializer.default import DefaultSerializer
 from scaled.protocol.python.message import (
     Argument,
     ArgumentType,
+    ClientShutdown,
     FunctionRequest,
     FunctionRequestType,
     FunctionResponse,
@@ -74,6 +75,9 @@ class Client:
     def __del__(self):
         logging.info(f"ScaledClient: disconnect from {self._address}")
         self.disconnect()
+
+    def shutdown(self):
+        self._connector.send_immediately(MessageType.ClientShutdown, ClientShutdown())
 
     def submit(self, fn: Callable, *args, **kwargs) -> Future:
         function_id, function_bytes = self.__get_function_id(fn)
